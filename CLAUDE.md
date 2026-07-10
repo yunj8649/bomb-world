@@ -37,6 +37,10 @@ android/ ios/          Capacitor 네이티브 프로젝트
   UI 컨셉: 레트로 베벨 없이 플랫·클린. 브랜드바 + 상태바(😇남은수·😀새게임·⏱시간 시:분:초) + 액션바(난이도칩·천사/악마토글·최고기록).
 - **난이도** `DIFFS`: 초급 9×9/10, 중급 16×16/40, **고급 30×16/99. 기본=중급**(localStorage `bomb.diff`)
 - **시간**: `fmtTime()`로 시:분:초(`H:MM:SS`) 표시. 결과·최고기록도 동일 형식.
+- **사운드** `SFX`: Web Audio 합성(외부파일 없음) — open/flag/chord/win/lose. 헤더 음소거 토글(`bomb.mute`), 아이콘 sound/mute.
+- **통계** `loadStats/recordResult`: 난이도별 played·won·streak·bestStreak (`bomb.stats` JSON). 승/패 시 기록, 모달에서 승률·최고기록·연승 표시, 초기화 버튼.
+- **가이드**: 게임 방법 모달(#guide). 첫 방문 자동 표시(`bomb.seenGuide`), 설정 시트에서 다시 보기.
+- **승리 효과**: `launchConfetti()` (#confetti 캔버스).
 - **첫 클릭 안전**: 첫 오픈 후 `placeMines()` — 첫 칸+주변 8칸엔 지뢰 배치 안 함
 - **플러드필**: `reveal()` 반복 스택으로 0칸 연쇄 오픈
 - **코딩(chord)**: 열린 숫자 탭 → 주변 깃발 수 == 숫자면 나머지 자동 오픈

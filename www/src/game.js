@@ -33,8 +33,10 @@
   // ---- 상태 ----
   let diffKey = load("bomb.diff", "intermediate");
   if (!DIFFS[diffKey]) diffKey = "intermediate";
-  let themeKey = load("bomb.theme", "heaven");
-  if (!THEMES[themeKey]) themeKey = "heaven";
+  function prefersDark() { try { return !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches); } catch (e) { return false; } }
+  // 저장된 테마가 있으면 그것, 없으면 시스템 다크/라이트 자동 감지
+  let savedTheme = load("bomb.theme", "");
+  let themeKey = THEMES[savedTheme] ? savedTheme : (prefersDark() ? "hell" : "heaven");
   let cfg, cells, cols, rows, mineTotal;
   let started, over, won, flagsUsed, revealedCount;
   let flagMode = false;
@@ -109,6 +111,7 @@
 
   // ---- 게임 시작 ----
   function newGame() {
+    clearSaved();
     cfg = DIFFS[diffKey];
     cols = cfg.cols; rows = cfg.rows; mineTotal = cfg.mines;
     cells = new Array(cols * rows).fill(null).map(() => ({
@@ -125,27 +128,88 @@
     updateBest();
   }
 
-  // 첫 클릭 안전: safeIdx와 그 주변엔 지뢰 배치 안 함
+  // 첫 클릭 안전 + 항상 넓게: safeIdx와 주변엔 지뢰 없음(=첫 칸 0),
+  // 여러 번 배치해 첫 클릭에서 가장 넓게 열리는 배치를 선택
   function placeMines(safeIdx) {
-    const forbidden = new Set([safeIdx, ...neighborsByIndex(safeIdx)]);
-    let placed = 0;
     const total = cols * rows;
-    // 후보 목록에서 셔플 없이 무작위 배치
-    while (placed < mineTotal) {
-      const i = (Math.random() * total) | 0;
-      if (forbidden.has(i) || cells[i].mine) continue;
-      cells[i].mine = true;
-      placed++;
+    const forbidden = new Set([safeIdx, ...neighborsByIndex(safeIdx)]);
+    const target = Math.max(12, Math.floor((total - mineTotal) * 0.22)); // 넓은 오픈 목표
+    let best = null, bestOpen = -1;
+    for (let tries = 0; tries < 40; tries++) {
+      const mines = new Set();
+      let placed = 0;
+      while (placed < mineTotal) {
+        const i = (Math.random() * total) | 0;
+        if (forbidden.has(i) || mines.has(i)) continue;
+        mines.add(i); placed++;
+      }
+      const openCount = simulateOpen(safeIdx, mines);
+      if (openCount > bestOpen) { bestOpen = openCount; best = mines; }
+      if (bestOpen >= target) break;
     }
+    for (const i of best) cells[i].mine = true;
+    computeCounts();
+  }
+  function countAround(i, mineSet) {
+    let n = 0; for (const j of neighborsByIndex(i)) if (mineSet.has(j)) n++; return n;
+  }
+  // 지뢰배치(mineSet)에서 safeIdx부터 플러드필로 열리는 칸 수
+  function simulateOpen(startIdx, mineSet) {
+    const seen = new Set(); const stack = [startIdx]; let cnt = 0;
+    while (stack.length) {
+      const j = stack.pop();
+      if (seen.has(j) || mineSet.has(j)) continue;
+      seen.add(j); cnt++;
+      if (countAround(j, mineSet) === 0)
+        for (const k of neighborsByIndex(j)) if (!seen.has(k)) stack.push(k);
+    }
+    return cnt;
+  }
+  function computeCounts() {
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++) {
-        if (cells[idx(r, c)].mine) continue;
-        let n = 0;
-        for (const j of neighbors(r, c)) if (cells[j].mine) n++;
-        cells[idx(r, c)].count = n;
+        const i = idx(r, c);
+        if (cells[i].mine) continue;
+        let n = 0; for (const j of neighbors(r, c)) if (cells[j].mine) n++;
+        cells[i].count = n;
       }
   }
   function neighborsByIndex(i) { return neighbors((i / cols) | 0, i % cols); }
+
+  // ---- 중단한 판 저장/복원 ----
+  function persist() {
+    if (!started || over) { clearSaved(); return; }
+    const m = [], o = [], f = [];
+    for (let i = 0; i < cells.length; i++) {
+      if (cells[i].mine) m.push(i);
+      if (cells[i].open) o.push(i);
+      if (cells[i].flag) f.push(i);
+    }
+    try { localStorage.setItem("bomb.game", JSON.stringify({ d: diffKey, t: elapsed, m, o, f })); } catch (e) {}
+  }
+  function clearSaved() { try { localStorage.removeItem("bomb.game"); } catch (e) {} }
+  function tryRestore() {
+    let st;
+    try { st = JSON.parse(localStorage.getItem("bomb.game") || "null"); } catch (e) { st = null; }
+    if (!st || !DIFFS[st.d] || !Array.isArray(st.m) || st.m.length === 0) return false;
+    diffKey = st.d;
+    cfg = DIFFS[diffKey]; cols = cfg.cols; rows = cfg.rows; mineTotal = cfg.mines;
+    cells = new Array(cols * rows).fill(null).map(() => ({ mine: false, count: 0, open: false, flag: false }));
+    for (const i of st.m) if (cells[i]) cells[i].mine = true;
+    computeCounts();
+    for (const i of (st.o || [])) if (cells[i]) cells[i].open = true;
+    for (const i of (st.f || [])) if (cells[i]) cells[i].flag = true;
+    revealedCount = (st.o || []).length;
+    flagsUsed = (st.f || []).length;
+    started = true; over = false; won = false;
+    elapsed = st.t || 0;
+    setFace("play"); updateMineCount(); updateTime();
+    buildBoard(); paintAll();
+    diffLabel.textContent = `${cfg.name} · ${cols}×${rows}`;
+    updateBest();
+    startTimer();
+    return true;
+  }
 
   // ---- 렌더 ----
   function buildBoard() {
@@ -281,6 +345,7 @@
       }
     }
     checkWin();
+    if (!over) persist();
   }
 
   function toggleFlag(i) {
@@ -293,6 +358,7 @@
     updateMineCount();
     vibrate(15);
     SFX.flag();
+    persist();
   }
 
   // 코딩: 열린 숫자 셀 주변 깃발 수 == 숫자면 나머지 오픈
@@ -313,7 +379,7 @@
   }
 
   function winGame() {
-    over = true; won = true; stopTimer();
+    over = true; won = true; stopTimer(); clearSaved();
     setFace("win");
     // 남은 지뢰 깃발 처리
     for (let i = 0; i < cells.length; i++)
@@ -328,7 +394,7 @@
   }
 
   function loseGame(boomIdx) {
-    over = true; won = false; stopTimer();
+    over = true; won = false; stopTimer(); clearSaved();
     setFace("lose");
     vibrate([40, 30, 80]);
     SFX.lose();
@@ -472,8 +538,17 @@
   }
   muteBtn.addEventListener("click", () => { SFX.toggle(); setMuteIcon(); vibrate(10); });
 
-  // 게임 방법 가이드
-  function openGuide() { sheet.classList.add("hidden"); $("guide").classList.remove("hidden"); }
+  // 게임 방법 가이드 (실제 칸 예시 포함)
+  function renderGuideDemo() {
+    const s = 'style="--cs:46px"';
+    $("guideDemo").innerHTML =
+      `<div class="gd-item"><div class="cell" ${s}></div><small>닫힌 칸<br>탭해 열기</small></div>` +
+      `<div class="gd-item"><div class="cell open n3" ${s}>3</div><small>주변 지뢰<br>3개</small></div>` +
+      `<div class="gd-item"><div class="cell flag" ${s}>${markSVG()}</div><small>지뢰 의심<br>길게 눌러 표시</small></div>` +
+      `<div class="gd-item"><div class="cell open mine" ${s}>${ICON.bomb}</div><small>지뢰<br>밟으면 끝!</small></div>`;
+  }
+  function showGuide() { renderGuideDemo(); $("guide").classList.remove("hidden"); }
+  function openGuide() { sheet.classList.add("hidden"); showGuide(); }
   function closeGuide() { $("guide").classList.add("hidden"); save("bomb.seenGuide", "1"); }
   $("guideBtn").addEventListener("click", openGuide);
   $("guideCloseBtn").addEventListener("click", closeGuide);
@@ -534,6 +609,20 @@
     rzTimer = setTimeout(fitCells, 120);
   });
 
+  // 시스템 다크/라이트 변경 자동 반영 (사용자가 직접 테마를 고른 적 없을 때만)
+  if (window.matchMedia) {
+    const mq = matchMedia("(prefers-color-scheme: dark)");
+    const onScheme = (e) => {
+      if (!load("bomb.theme", "")) { themeKey = e.matches ? "hell" : "heaven"; applyTheme(); }
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onScheme);
+    else if (mq.addListener) mq.addListener(onScheme);
+  }
+
+  // 앱을 벗어날 때 진행 중인 판 저장(경과시간 포함)
+  window.addEventListener("pagehide", persist);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) persist(); });
+
   // ---- 시작 ----
   document.querySelectorAll(".seg-opt").forEach((b) => {
     const span = b.querySelector("span");
@@ -543,7 +632,8 @@
   $("menuBtn").innerHTML = ICON.menu;
   setMuteIcon();
   applyTheme();
-  newGame();
+  // 중단한 판이 있으면 이어하기, 없으면 새 게임
+  if (!tryRestore()) newGame();
   // 첫 방문이면 게임 방법 자동 안내
-  if (load("bomb.seenGuide", "0") !== "1") $("guide").classList.remove("hidden");
+  if (load("bomb.seenGuide", "0") !== "1") showGuide();
 })();

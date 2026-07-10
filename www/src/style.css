@@ -37,10 +37,10 @@ html[data-theme="hell"] {
   --panel: #2a1616;
   --panel-2: #351c1c;
   --panel-line: #431f1f;
-  --cell: #3c2020;
-  --cell-press: #4d2929;
-  --open: #170c0c;
-  --open-line: #2a1414;
+  --cell: #6a4242;
+  --cell-press: #7d5050;
+  --open: #1f1212;
+  --open-line: #341c1c;
   --text: #ffe9e2;
   --muted: #c39a92;
   --accent: #ff5330;
@@ -295,6 +295,10 @@ html, body {
 /* 게임 방법 가이드 */
 .guide-card { text-align: left; }
 .guide-card h2 { text-align: center; }
+.guide-demo { display: flex; gap: 6px; justify-content: space-between; margin-bottom: 16px; }
+.gd-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.gd-item .cell { cursor: default; box-shadow: var(--shadow); }
+.gd-item small { font-size: 10.5px; line-height: 1.25; color: var(--muted); }
 .guide-goal {
   text-align: center; color: var(--text); font-size: 15px; line-height: 1.5;
   background: var(--panel-2); border-radius: 12px; padding: 12px; margin-bottom: 14px;
