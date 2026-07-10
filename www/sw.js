@@ -1,6 +1,6 @@
 /* 지뢰천국 서비스 워커 — 앱 셸 오프라인 캐시
    파일 수정 후 배포할 땐 CACHE 버전 문자열을 올려야 새 버전이 반영됨 */
-const CACHE = "bombcheon-v3";
+const CACHE = "bombcheon-v4";
 const ASSETS = [
   "./",
   "./index.html",

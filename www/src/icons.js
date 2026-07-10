@@ -97,5 +97,14 @@
   const menu = wrap(`
     <path d="M15 22h34M15 32h34M15 42h34" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>`);
 
-  window.ICON = { angel, devil, bomb, boom, trophy, clock, menu, face };
+  // 소리 켜짐 / 음소거
+  const sound = wrap(`
+    <path d="M11 25h8l12-9v32l-12-9h-8z" fill="currentColor"/>
+    <path d="M39 24q5 8 0 16" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M45 19q9 13 0 26" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>`);
+  const mute = wrap(`
+    <path d="M11 25h8l12-9v32l-12-9h-8z" fill="currentColor"/>
+    <path d="M40 24l16 16M56 24l-16 16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>`);
+
+  window.ICON = { angel, devil, bomb, boom, trophy, clock, menu, sound, mute, face };
 })();

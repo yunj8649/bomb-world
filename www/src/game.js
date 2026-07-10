@@ -24,6 +24,7 @@
   const faceBtn = $("faceBtn");
   const flagBtn = $("flagBtn");
   const themeBtn = $("themeBtn");
+  const muteBtn = $("muteBtn");
   const diffLabel = $("diffLabel");
   const bestLabel = $("bestLabel");
   const sheet = $("sheet");
@@ -45,6 +46,55 @@
   function pad3(n) { return String(Math.max(0, Math.min(999, n))).padStart(3, "0"); }
   function vibrate(ms) { if (navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
   const idx = (r, c) => r * cols + c;
+
+  // ---- 사운드 (Web Audio 합성, 외부파일 없음) ----
+  const SFX = (function () {
+    let ctx = null;
+    let muted = load("bomb.mute", "0") === "1";
+    function ac() {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        try { ctx = new AC(); } catch (e) { return null; }
+      }
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+    function beep(freq, dur, type, vol, delay) {
+      if (muted) return;
+      const c = ac(); if (!c) return;
+      const t0 = c.currentTime + (delay || 0);
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.14, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(c.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    return {
+      muted: () => muted,
+      toggle() { muted = !muted; save("bomb.mute", muted ? "1" : "0"); if (!muted) ac(); return muted; },
+      open() { beep(600, 0.08, "sine", 0.12); },
+      flag() { beep(760, 0.07, "triangle", 0.13); },
+      chord() { beep(520, 0.07, "sine", 0.12); },
+      win() { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.2, "triangle", 0.16, i * 0.1)); },
+      lose() { beep(300, 0.45, "sawtooth", 0.16); beep(150, 0.5, "sawtooth", 0.14, 0.09); },
+    };
+  })();
+
+  // ---- 통계 (localStorage) ----
+  function loadStats() { try { return JSON.parse(localStorage.getItem("bomb.stats") || "{}"); } catch (e) { return {}; } }
+  function saveStats(s) { try { localStorage.setItem("bomb.stats", JSON.stringify(s)); } catch (e) {} }
+  function statSlot(s, k) { return s[k] || (s[k] = { played: 0, won: 0, streak: 0, bestStreak: 0 }); }
+  function recordResult(win) {
+    const s = loadStats(), st = statSlot(s, diffKey);
+    st.played++;
+    if (win) { st.won++; st.streak++; if (st.streak > st.bestStreak) st.bestStreak = st.streak; }
+    else { st.streak = 0; }
+    saveStats(s);
+  }
+  function bestFor(k) { const v = load("bomb.best." + k, ""); return v === "" ? null : parseInt(v, 10); }
 
   function neighbors(r, c) {
     const out = [];
@@ -242,6 +292,7 @@
     paint(i);
     updateMineCount();
     vibrate(15);
+    SFX.flag();
   }
 
   // 코딩: 열린 숫자 셀 주변 깃발 수 == 숫자면 나머지 오픈
@@ -269,7 +320,9 @@
       if (cells[i].mine && !cells[i].flag) { cells[i].flag = true; }
     flagsUsed = mineTotal; updateMineCount(); paintAll();
     vibrate([20, 40, 20]);
+    SFX.win();
     launchConfetti();
+    recordResult(true);
     const best = recordBest(elapsed);
     showResult(true, best);
   }
@@ -278,6 +331,8 @@
     over = true; won = false; stopTimer();
     setFace("lose");
     vibrate([40, 30, 80]);
+    SFX.lose();
+    recordResult(false);
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (cell.mine) { cell.open = true; }
@@ -361,10 +416,15 @@
     if (moved || longFired) return;
 
     const cell = cells[i];
-    if (cell.open) { chord(i); return; }          // 열린 숫자 → 코딩
+    if (cell.open) {                               // 열린 숫자 → 코딩
+      const before = revealedCount; chord(i);
+      if (!over && revealedCount > before) SFX.chord();
+      return;
+    }
     if (flagMode) { toggleFlag(i); return; }       // 깃발 모드
     if (cell.flag) return;                         // 깃발 켜진 셀은 열기 방지
     reveal(i);
+    if (!over) SFX.open();
   });
 
   boardEl.addEventListener("pointercancel", () => { clearTimeout(pressTimer); pressed = null; if (!over) setFace("play"); });
@@ -405,6 +465,48 @@
   document.querySelectorAll(".seg-opt").forEach((b) =>
     b.addEventListener("click", () => setTheme(b.dataset.themeOpt)));
 
+  // 음소거
+  function setMuteIcon() {
+    muteBtn.innerHTML = SFX.muted() ? ICON.mute : ICON.sound;
+    muteBtn.classList.toggle("muted", SFX.muted());
+  }
+  muteBtn.addEventListener("click", () => { SFX.toggle(); setMuteIcon(); vibrate(10); });
+
+  // 게임 방법 가이드
+  function openGuide() { sheet.classList.add("hidden"); $("guide").classList.remove("hidden"); }
+  function closeGuide() { $("guide").classList.add("hidden"); save("bomb.seenGuide", "1"); }
+  $("guideBtn").addEventListener("click", openGuide);
+  $("guideCloseBtn").addEventListener("click", closeGuide);
+  $("guide").addEventListener("click", (e) => { if (e.target.id === "guide") closeGuide(); });
+
+  // 기록 통계
+  function renderStats() {
+    const s = loadStats();
+    $("statsBody").innerHTML = ["beginner", "intermediate", "expert"].map((k) => {
+      const st = s[k] || { played: 0, won: 0, streak: 0, bestStreak: 0 };
+      const rate = st.played ? Math.round(st.won / st.played * 100) : 0;
+      const best = bestFor(k), D = DIFFS[k];
+      return `<div class="stat-block">
+        <div class="sb-head">${D.name}<span>${D.cols}×${D.rows} · 지뢰 ${D.mines}</span></div>
+        <div class="sb-grid">
+          <div><b>${st.played}</b><small>플레이</small></div>
+          <div><b>${st.won}</b><small>승리</small></div>
+          <div><b>${rate}%</b><small>승률</small></div>
+          <div><b>${best === null ? "--" : fmtTime(best)}</b><small>최고 기록</small></div>
+          <div><b>${st.streak}</b><small>현재 연승</small></div>
+          <div><b>${st.bestStreak}</b><small>최고 연승</small></div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  function openStats() { renderStats(); sheet.classList.add("hidden"); $("stats").classList.remove("hidden"); }
+  $("statsBtn").addEventListener("click", openStats);
+  $("statsCloseBtn").addEventListener("click", () => $("stats").classList.add("hidden"));
+  $("stats").addEventListener("click", (e) => { if (e.target.id === "stats") $("stats").classList.add("hidden"); });
+  $("statsResetBtn").addEventListener("click", () => {
+    if (window.confirm("모든 난이도의 통계를 초기화할까요?")) { saveStats({}); renderStats(); }
+  });
+
   $("menuBtn").addEventListener("click", () => openSheet());
   $("diffBtn").addEventListener("click", () => openSheet());
   $("againBtn").addEventListener("click", () => { result.classList.add("hidden"); newGame(); });
@@ -439,6 +541,9 @@
   });
   $("timeIco").innerHTML = ICON.clock;
   $("menuBtn").innerHTML = ICON.menu;
+  setMuteIcon();
   applyTheme();
   newGame();
+  // 첫 방문이면 게임 방법 자동 안내
+  if (load("bomb.seenGuide", "0") !== "1") $("guide").classList.remove("hidden");
 })();
