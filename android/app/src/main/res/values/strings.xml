@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">지뢰천국</string>
+    <string name="title_activity_main">지뢰천국</string>
+    <string name="package_name">com.recokr.bombcheon</string>
+    <string name="custom_url_scheme">com.recokr.bombcheon</string>
+</resources>

@@ -1,0 +1,27 @@
+# deps
+node_modules/
+
+# Capacitor / native build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/app/src/main/assets/public/
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+DerivedData/
+
+# generated PWA icons (from @capacitor/assets)
+/icons/
+
+# macOS
+.DS_Store
+
+# built APKs
+*.apk
+
+# release signing secrets (백업 필수, 공개 금지)
+android/keystore.properties
+*.jks
+*.keystore

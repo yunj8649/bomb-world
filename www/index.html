@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="heaven">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="지뢰천국" />
+<meta name="theme-color" content="#eaf2ff" id="themeColor" />
+
+<title>지뢰천국 — 지뢰찾기</title>
+<meta name="description" content="설치 없이 바로 즐기는 지뢰찾기. 천국·지옥 테마 전환, 초급·중급·고급, 최고기록 저장." />
+
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+
+<link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 브랜드 + 컨트롤 -->
+    <header id="brandbar">
+      <div class="brand">
+        <span class="brand-icon" id="brandIcon"></span>
+        <span class="brand-name" id="brandName">지뢰천국</span>
+      </div>
+      <div class="head-actions">
+        <button id="themeBtn" class="pill" aria-label="테마 전환">
+          <span id="themeLabel">천국</span>
+        </button>
+        <button id="menuBtn" class="icon-btn" aria-label="설정"></button>
+      </div>
+    </header>
+
+    <!-- 상태 바 -->
+    <section id="statbar">
+      <div class="stat">
+        <span class="stat-ico" id="mineIco"></span>
+        <span class="stat-num" id="mineCount">040</span>
+      </div>
+      <button id="faceBtn" class="face" aria-label="새 게임"></button>
+      <div class="stat">
+        <span class="stat-ico" id="timeIco"></span>
+        <span class="stat-num" id="timeCount">0:00:00</span>
+      </div>
+    </section>
+
+    <main id="boardWrap">
+      <div id="board" role="grid" aria-label="지뢰찾기 판"></div>
+    </main>
+
+    <!-- 액션 바 -->
+    <footer id="actionbar">
+      <button id="diffBtn" class="chip" aria-label="난이도">
+        <span id="diffLabel">중급 · 16×16</span>
+      </button>
+      <button id="flagBtn" class="flag-toggle" aria-label="표시 모드">
+        <span class="fi"></span><span class="ft">천사</span>
+      </button>
+      <span class="chip ghost" id="bestLabel">최고 --</span>
+    </footer>
+  </div>
+
+  <canvas id="confetti"></canvas>
+
+  <!-- 설정 시트 (난이도 + 테마) -->
+  <div id="sheet" class="overlay hidden">
+    <div class="sheet-card">
+      <h2>설정</h2>
+
+      <div class="group-label">테마</div>
+      <div class="seg" id="themeSeg">
+        <button class="seg-opt" data-theme-opt="heaven"><span></span>지뢰천국</button>
+        <button class="seg-opt" data-theme-opt="hell"><span></span>지뢰지옥</button>
+      </div>
+
+      <div class="group-label">난이도</div>
+      <button class="diff-opt" data-diff="beginner">
+        <b>초급</b><small>9 × 9 · 지뢰 10</small>
+      </button>
+      <button class="diff-opt" data-diff="intermediate">
+        <b>중급</b><small>16 × 16 · 지뢰 40</small>
+      </button>
+      <button class="diff-opt" data-diff="expert">
+        <b>고급</b><small>30 × 16 · 지뢰 99</small>
+      </button>
+
+      <button class="sheet-close">닫기</button>
+    </div>
+  </div>
+
+  <!-- 결과 오버레이 -->
+  <div id="result" class="overlay hidden">
+    <div class="result-card">
+      <div id="resultEmoji"></div>
+      <h2 id="resultTitle">클리어!</h2>
+      <p id="resultInfo"></p>
+      <button id="againBtn" class="primary-btn">다시 하기</button>
+    </div>
+  </div>
+
+  <script src="src/icons.js"></script>
+  <script src="src/game.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "지뢰천국 — 클래식 지뢰찾기",
+  "short_name": "지뢰천국",
+  "description": "설치 없이 바로 즐기는 클래식 지뢰찾기. 초급·중급·고급, 최고기록 저장.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0a14",
+  "theme_color": "#1a1228",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

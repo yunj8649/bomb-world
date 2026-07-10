@@ -1,0 +1,24 @@
+{
+  "name": "bombcheon",
+  "version": "1.0.0",
+  "description": "지뢰천국 — 서버 없는 클래식 지뢰찾기 (웹 + Capacitor iOS/Android)",
+  "private": true,
+  "scripts": {
+    "sync": "cap sync",
+    "copy": "cap copy",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "run:android": "cap run android",
+    "icons": "node scripts/gen-icons.mjs && @capacitor/assets generate --iconBackgroundColor #1a1228 --iconBackgroundColorDark #1a1228 --splashBackgroundColor #0d0a14 --splashBackgroundColorDark #06040a"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/ios": "^6.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.1",
+    "sharp": "^0.35.3"
+  }
+}
